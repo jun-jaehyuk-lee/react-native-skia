@@ -1,112 +1,249 @@
-import { Image } from 'expo-image';
-import { Platform, StyleSheet } from 'react-native';
+import React, { useEffect, useRef, useState } from "react";
+import { ScrollView, StyleSheet, Switch, View } from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
 
-import { Collapsible } from '@/components/ui/collapsible';
-import { ExternalLink } from '@/components/external-link';
-import ParallaxScrollView from '@/components/parallax-scroll-view';
-import { ThemedText } from '@/components/themed-text';
-import { ThemedView } from '@/components/themed-view';
-import { IconSymbol } from '@/components/ui/icon-symbol';
-import { Fonts } from '@/constants/theme';
+import { ThemedText } from "@/components/themed-text";
+import { useThemeColor } from "@/hooks/use-theme-color";
 
-export default function TabTwoScreen() {
+const JS_WORK_UNITS = 6000;
+
+function now() {
+  if (typeof globalThis.performance?.now === "function") {
+    return globalThis.performance.now();
+  }
+  return Date.now();
+}
+
+function useRafStats(enabled: boolean, workUnits: number) {
+  const [fps, setFps] = useState(0);
+  const [avgFrameMs, setAvgFrameMs] = useState(0);
+  const [uptime, setUptime] = useState(0);
+  const startRef = useRef<number | null>(null);
+
+  useEffect(() => {
+    if (!enabled) {
+      startRef.current = null;
+      setFps(0);
+      setAvgFrameMs(0);
+      setUptime(0);
+      return;
+    }
+
+    let frameCount = 0;
+    let lastFpsTime = now();
+    startRef.current = lastFpsTime;
+    let rafId = 0;
+
+    const loop = () => {
+      const current = now();
+      frameCount += 1;
+
+      if (workUnits > 0) {
+        let acc = 0;
+        for (let i = 0; i < workUnits; i += 1) {
+          acc += Math.sqrt(i * 13.37);
+        }
+        void acc;
+      }
+
+      if (current - lastFpsTime >= 1000) {
+        const elapsed = current - lastFpsTime;
+        setFps(Math.round((frameCount * 1000) / elapsed));
+        setAvgFrameMs(Number((elapsed / frameCount).toFixed(2)));
+        if (startRef.current !== null) {
+          setUptime(Math.round((current - startRef.current) / 1000));
+        }
+        frameCount = 0;
+        lastFpsTime = current;
+      }
+
+      rafId = requestAnimationFrame(loop);
+    };
+
+    rafId = requestAnimationFrame(loop);
+    return () => cancelAnimationFrame(rafId);
+  }, [enabled, workUnits]);
+
+  return { fps, avgFrameMs, uptime };
+}
+
+export default function ExploreScreen() {
+  const backgroundColor = useThemeColor({}, "background");
+  const cardBackground = useThemeColor(
+    { light: "#f8fafc", dark: "#111827" },
+    "background"
+  );
+  const cardBorder = useThemeColor(
+    { light: "#e2e8f0", dark: "#1f2937" },
+    "background"
+  );
+  const accent = useThemeColor({}, "tint");
+
+  const [isRunning, setIsRunning] = useState(true);
+  const [simulateLoad, setSimulateLoad] = useState(false);
+  const renderCount = useRef(0);
+  renderCount.current += 1;
+
+  const workUnits = simulateLoad ? JS_WORK_UNITS : 0;
+  const { fps, avgFrameMs, uptime } = useRafStats(isRunning, workUnits);
+
   return (
-    <ParallaxScrollView
-      headerBackgroundColor={{ light: '#D0D0D0', dark: '#353636' }}
-      headerImage={
-        <IconSymbol
-          size={310}
-          color="#808080"
-          name="chevron.left.forwardslash.chevron.right"
-          style={styles.headerImage}
-        />
-      }>
-      <ThemedView style={styles.titleContainer}>
-        <ThemedText
-          type="title"
-          style={{
-            fontFamily: Fonts.rounded,
-          }}>
-          Explore
-        </ThemedText>
-      </ThemedView>
-      <ThemedText>This app includes example code to help you get started.</ThemedText>
-      <Collapsible title="File-based routing">
-        <ThemedText>
-          This app has two screens:{' '}
-          <ThemedText type="defaultSemiBold">app/(tabs)/index.tsx</ThemedText> and{' '}
-          <ThemedText type="defaultSemiBold">app/(tabs)/explore.tsx</ThemedText>
-        </ThemedText>
-        <ThemedText>
-          The layout file in <ThemedText type="defaultSemiBold">app/(tabs)/_layout.tsx</ThemedText>{' '}
-          sets up the tab navigator.
-        </ThemedText>
-        <ExternalLink href="https://docs.expo.dev/router/introduction">
-          <ThemedText type="link">Learn more</ThemedText>
-        </ExternalLink>
-      </Collapsible>
-      <Collapsible title="Android, iOS, and web support">
-        <ThemedText>
-          You can open this project on Android, iOS, and the web. To open the web version, press{' '}
-          <ThemedText type="defaultSemiBold">w</ThemedText> in the terminal running this project.
-        </ThemedText>
-      </Collapsible>
-      <Collapsible title="Images">
-        <ThemedText>
-          For static images, you can use the <ThemedText type="defaultSemiBold">@2x</ThemedText> and{' '}
-          <ThemedText type="defaultSemiBold">@3x</ThemedText> suffixes to provide files for
-          different screen densities
-        </ThemedText>
-        <Image
-          source={require('@/assets/images/react-logo.png')}
-          style={{ width: 100, height: 100, alignSelf: 'center' }}
-        />
-        <ExternalLink href="https://reactnative.dev/docs/images">
-          <ThemedText type="link">Learn more</ThemedText>
-        </ExternalLink>
-      </Collapsible>
-      <Collapsible title="Light and dark mode components">
-        <ThemedText>
-          This template has light and dark mode support. The{' '}
-          <ThemedText type="defaultSemiBold">useColorScheme()</ThemedText> hook lets you inspect
-          what the user&apos;s current color scheme is, and so you can adjust UI colors accordingly.
-        </ThemedText>
-        <ExternalLink href="https://docs.expo.dev/develop/user-interface/color-themes/">
-          <ThemedText type="link">Learn more</ThemedText>
-        </ExternalLink>
-      </Collapsible>
-      <Collapsible title="Animations">
-        <ThemedText>
-          This template includes an example of an animated component. The{' '}
-          <ThemedText type="defaultSemiBold">components/HelloWave.tsx</ThemedText> component uses
-          the powerful{' '}
-          <ThemedText type="defaultSemiBold" style={{ fontFamily: Fonts.mono }}>
-            react-native-reanimated
-          </ThemedText>{' '}
-          library to create a waving hand animation.
-        </ThemedText>
-        {Platform.select({
-          ios: (
-            <ThemedText>
-              The <ThemedText type="defaultSemiBold">components/ParallaxScrollView.tsx</ThemedText>{' '}
-              component provides a parallax effect for the header image.
-            </ThemedText>
-          ),
-        })}
-      </Collapsible>
-    </ParallaxScrollView>
+    <SafeAreaView style={[styles.safeArea, { backgroundColor }]}>
+      <ScrollView contentContainerStyle={styles.content}>
+        <View style={styles.header}>
+          <ThemedText type="title">Performance</ThemedText>
+          <ThemedText lightColor="#64748b" darkColor="#94a3b8">
+            Live JS frame stats and quick stress switches.
+          </ThemedText>
+        </View>
+
+        <View style={styles.section}>
+          <ThemedText type="subtitle">Live Metrics</ThemedText>
+          <View style={styles.statsGrid}>
+            <View
+              style={[
+                styles.statCard,
+                { backgroundColor: cardBackground, borderColor: cardBorder },
+              ]}>
+              <ThemedText type="defaultSemiBold">FPS</ThemedText>
+              <ThemedText style={styles.statValue}>
+                {isRunning ? fps : "--"}
+              </ThemedText>
+              <ThemedText lightColor="#94a3b8" darkColor="#64748b">
+                avg
+              </ThemedText>
+            </View>
+            <View
+              style={[
+                styles.statCard,
+                { backgroundColor: cardBackground, borderColor: cardBorder },
+              ]}>
+              <ThemedText type="defaultSemiBold">Frame (ms)</ThemedText>
+              <ThemedText style={styles.statValue}>
+                {isRunning ? avgFrameMs : "--"}
+              </ThemedText>
+              <ThemedText lightColor="#94a3b8" darkColor="#64748b">
+                avg
+              </ThemedText>
+            </View>
+            <View
+              style={[
+                styles.statCard,
+                { backgroundColor: cardBackground, borderColor: cardBorder },
+              ]}>
+              <ThemedText type="defaultSemiBold">Uptime</ThemedText>
+              <ThemedText style={styles.statValue}>
+                {isRunning ? `${uptime}s` : "--"}
+              </ThemedText>
+              <ThemedText lightColor="#94a3b8" darkColor="#64748b">
+                sampling
+              </ThemedText>
+            </View>
+            <View
+              style={[
+                styles.statCard,
+                { backgroundColor: cardBackground, borderColor: cardBorder },
+              ]}>
+              <ThemedText type="defaultSemiBold">Renders</ThemedText>
+              <ThemedText style={styles.statValue}>{renderCount.current}</ThemedText>
+              <ThemedText lightColor="#94a3b8" darkColor="#64748b">
+                view
+              </ThemedText>
+            </View>
+          </View>
+        </View>
+
+        <View style={styles.section}>
+          <ThemedText type="subtitle">Sampling</ThemedText>
+          <View
+            style={[
+              styles.controlRow,
+              { backgroundColor: cardBackground, borderColor: cardBorder },
+            ]}>
+            <View style={styles.controlText}>
+              <ThemedText type="defaultSemiBold">Live sampling</ThemedText>
+              <ThemedText lightColor="#64748b" darkColor="#94a3b8">
+                Start or stop RAF sampling.
+              </ThemedText>
+            </View>
+            <Switch
+              value={isRunning}
+              onValueChange={setIsRunning}
+              trackColor={{ false: cardBorder, true: accent }}
+            />
+          </View>
+          <View
+            style={[
+              styles.controlRow,
+              { backgroundColor: cardBackground, borderColor: cardBorder },
+            ]}>
+            <View style={styles.controlText}>
+              <ThemedText type="defaultSemiBold">Simulate JS load</ThemedText>
+              <ThemedText lightColor="#64748b" darkColor="#94a3b8">
+                Adds math work each frame.
+              </ThemedText>
+            </View>
+            <Switch
+              value={simulateLoad}
+              onValueChange={setSimulateLoad}
+              trackColor={{ false: cardBorder, true: accent }}
+            />
+          </View>
+        </View>
+
+        <View style={styles.section}>
+          <ThemedText type="subtitle">Notes</ThemedText>
+          <ThemedText lightColor="#64748b" darkColor="#94a3b8">
+            Use the Home tab to open specific Skia demos and compare performance.
+          </ThemedText>
+        </View>
+      </ScrollView>
+    </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
-  headerImage: {
-    color: '#808080',
-    bottom: -90,
-    left: -35,
-    position: 'absolute',
+  safeArea: {
+    flex: 1,
   },
-  titleContainer: {
-    flexDirection: 'row',
-    gap: 8,
+  content: {
+    gap: 20,
+    padding: 24,
+  },
+  header: {
+    gap: 6,
+  },
+  section: {
+    gap: 12,
+  },
+  statsGrid: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: 12,
+  },
+  statCard: {
+    borderRadius: 16,
+    borderWidth: 1,
+    flexGrow: 1,
+    gap: 6,
+    minWidth: 140,
+    padding: 16,
+  },
+  statValue: {
+    fontSize: 28,
+    fontWeight: "700",
+  },
+  controlRow: {
+    alignItems: "center",
+    borderRadius: 16,
+    borderWidth: 1,
+    flexDirection: "row",
+    justifyContent: "space-between",
+    padding: 16,
+  },
+  controlText: {
+    flex: 1,
+    gap: 4,
+    paddingRight: 12,
   },
 });
